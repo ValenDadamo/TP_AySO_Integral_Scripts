@@ -53,7 +53,7 @@ sudo vgcreate vg_datos /dev/sdc1 /dev/sdc2
 sudo vgcreate vg_temp /dev/sdd1
 
 sudo lvcreate -L +2.5GB -n lv_workareas vg_datos
-sudo lvcreate -L +10mb -n lv_docker vg_datos
+sudo lvcreate -L +500mb -n lv_docker vg_datos
 sudo lvcreate -L +2.5GB -n lv_swap vg_temp
 
 sudo mkfs.ext4 /dev/vg_datos/lv_docker
