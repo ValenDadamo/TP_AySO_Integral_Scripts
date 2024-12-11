@@ -1,0 +1,64 @@
+# Explicación del script para la configuración de particiones y volúmenes lógicos
+
+Este script se utiliza para crear particiones en discos, configurar volúmenes físicos, grupos de volúmenes y volúmenes lógicos en un sistema Linux. A continuación se explica cada parte del script:
+
+1. **Creación de particiones con fdisk**:
+   - Se crean varios archivos de comandos para `fdisk`, que es una herramienta para manipular las tablas de particiones de los discos.
+   - `comandos_fdisk.txt`:
+     - `n`: crear una nueva partición.
+     - `p`: especificar que la partición será primaria.
+     - `+3GB`: asignar un tamaño de 3 GB a la primera partición.
+     - Se repite el proceso para crear una segunda partición sin especificar el tamaño, lo que ocupará el espacio restante.
+     - `t`: cambiar el tipo de partición.
+     - `8e`: establecer el tipo de partición como LVM (Logical Volume Manager).
+     - `w`: escribir los cambios y salir.
+   
+   - `comandos_fdisk_sdd.txt`:
+     - Se crea una nueva partición en `/dev/sdd` y se establece su tipo como LVM.
+   
+   - `comandos_disk_swap.txt`:
+     - Se crea una nueva partición en `/dev/sde` de 1 GB para usar como swap.
+
+2. **Ejecutando los comandos de fdisk**:
+   - `sudo fdisk /dev/sdc < comandos_fdisk.txt`: ejecuta los comandos de `comandos_fdisk.txt` en el disco `/dev/sdc`.
+   - `sudo fdisk /dev/sdd < comandos_fdisk_sdd.txt`: ejecuta los comandos de `comandos_fdisk_sdd.txt` en el disco `/dev/sdd`.
+   - `sudo fdisk /dev/sde < comandos_disk_swap.txt`: ejecuta los comandos de `comandos_disk_swap.txt` en el disco `/dev/sde`.
+
+3. **Creación de volúmenes físicos**:
+   - `sudo pvcreate /dev/sdc1`: crea un volumen físico en la primera partición del disco `/dev/sdc`.
+   - `sudo pvcreate /dev/sdc2`: crea un volumen físico en la segunda partición del disco `/dev/sdc`.
+   - `sudo pvcreate /dev/sdd1`: crea un volumen físico en la primera partición del disco `/dev/sdd`.
+
+4. **Creación de grupos de volúmenes**:
+   - `sudo vgcreate vg_datos /dev/sdc1 /dev/sdc2`: crea un grupo de volúmenes llamado `vg_datos` que incluye las particiones `/dev/sdc1` y `/dev/sdc2`.
+   - `sudo vgcreate vg_temp /dev/sdd1`: crea un grupo de volúmenes llamado `vg_temp` que incluye la partición `/dev/sdd1`.
+
+5. **Creación de volúmenes lógicos**:
+   - `sudo lvcreate -L +2.5GB -n lv_workareas vg_datos`: crea un volumen lógico de 2.5 GB llamado `lv_workareas` en el grupo de volúmenes `vg_datos`.
+   - `sudo lvcreate -L +500mb -n lv_docker vg_datos`: crea un volumen lógico de 500 MB llamado `lv_docker` en el grupo de volúmenes `vg_datos`.
+   - `sudo lvcreate -L +2.5GB -n lv_swap vg_temp`: crea un volumen lógico de 2.5 GB llamado `lv_swap` en el grupo de volúmenes `vg_temp`.
+
+6. **Formateo de volúmenes lógicos**:
+   - `sudo mkfs.ext4 /dev/vg_datos/lv_docker`: formatea el volumen lógico `lv_docker` con el sistema de archivos ext4.
+   - `sudo mkdir -p /var/lib/docker`: crea el directorio `/var/lib/docker` si no existe.
+   - `sudo mount /dev/vg_datos/lv_docker /var/lib/docker`: monta el volumen lógico `lv_docker` en el directorio `/var/lib/docker`.
+
+7. **Configuración de swap**:
+   - `sudo mkswap /dev/sde1`: configura la primera partición del disco `/dev/sde` como swap.
+   - `sudo swapon /dev/sde1`: activa el área de swap.
+
+8. **Montaje de otros volúmenes lógicos**:
+   - `sudo mkfs.ext4 /dev/vg_datos/lv_workareas`: formatea el volumen lógico `lv_workareas` con el sistema de archivos ext4.
+   - `sudo mkdir -p /work`: crea el directorio `/work` si no existe.
+   - `sudo mount /dev/vg_datos/lv_workareas /work`: monta el volumen lógico `lv_workareas` en el directorio `/work`.
+
+9. **Configuración de fstab**:
+   - Se añaden entradas al archivo `/etc/fstab` para que los volúmenes monten automáticamente al iniciar el sistema:
+     - `echo "/dev/vg_datos/lv_docker /var/lib/docker ext4 defaults 0 0"`: agrega la entrada para `lv_docker`.
+     - `echo "/dev/vg_datos/lv_workareas /work ext4 defaults 0 0"`: agrega la entrada para `lv_workareas`.
+     - `echo "/dev/vg_temp/lv_swap none swap sw 0 0"`: agrega la entrada para el swap.
+
+10. **Montaje de todos los sistemas de archivos**:
+    - `sudo mount -a`: monta todos los sistemas de archivos especificados en `/etc/fstab`.
+
+Este script es útil para configurar un sistema de almacenamiento en Linux utilizando LVM, permitiendo una gestión flexible de los volúmenes y la capacidad de expandir o reducir el espacio según sea necesario.
